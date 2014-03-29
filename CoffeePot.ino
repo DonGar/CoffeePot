@@ -3,8 +3,8 @@
 #define INDICATOR 3
 #define VALVE 2
 
-#define MIN_TIME 2000
-#define MAX_TIME 20000
+#define DEBOUNCE_START_DELAY 2000
+#define MAX_FLOW_TIME 20000
 
 void setup() {
   pinMode(SENSOR, INPUT);
@@ -25,33 +25,34 @@ void flowOff() {
   digitalWrite(INDICATOR, LOW);
 }
 
-unsigned long down = 0;
+unsigned long water_low_detected = 0;
+unsigned long water_flowing = 0;
 
 void loop() {
-  bool waterLow = digitalRead(SENSOR);
+  bool sensor_low = digitalRead(SENSOR);
 
-  unsigned long now = millis();  
+  unsigned long now = millis();
 
-  // If the water is low, but we turned off, turn on.
-  if (waterLow && !down) {
-    down = now;
+  // If water switches to low, record it switched to low.
+  if (sensor_low && !water_low_detected) {
+    water_low_detected = now;
+  }
+  
+  // If water stays low for longer than DEBOUNCE_START_DELAY, flow water into tank.
+  if (water_low_detected && !water_flowing && (now > (water_low_detected + DEBOUNCE_START_DELAY))) {
+    water_flowing = now;
     flowOn();
-    
-    // Minimum activation time to reduce chatter.
-    delay(MIN_TIME);
   }
 
   // If the water is not low, but we are on, turn off.
-  if (!waterLow && down) {
-    down = 0;
+  if (!sensor_low && water_low_detected) {
+    water_low_detected = 0;
+    water_flowing = 0;
     flowOff();
-    
-    // Minimum activation time to reduce chatter.
-    delay(MIN_TIME);
   }
 
-  // If the water if flowing, see if it's reached the emergency cut off limit.  
-  if ((waterLow && down) && (now > down + MAX_TIME)) {
+  // If the water is flowing, see if it's reached the emergency cut off limit.  
+  if (water_flowing && (now > (water_flowing + MAX_FLOW_TIME))) {
     flowOff();
 
     // We never exit this state, you have to reset the device.    
