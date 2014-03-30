@@ -4,6 +4,7 @@
 #define VALVE 2
 
 #define DEBOUNCE_START_DELAY 2000
+#define MIN_FLOW_TIME 2000
 #define MAX_FLOW_TIME 20000
 
 void setup() {
@@ -42,6 +43,9 @@ void loop() {
   if (water_low_detected && !water_flowing && (now > (water_low_detected + DEBOUNCE_START_DELAY))) {
     water_flowing = now;
     flowOn();
+
+    // Minimum activation time to reduce chatter.
+    delay(MIN_FLOW_TIME);   
   }
 
   // If the water is not low, but we are on, turn off.
